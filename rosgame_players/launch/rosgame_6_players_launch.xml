@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="rosgame_players" exec="pacific_player" name="pacific_player_1"/>
+  <node pkg="rosgame_players" exec="war_player" name="war_player_1"/>
+  <node pkg="rosgame_players" exec="pacific_player" name="pacific_player_2"/>
+  <node pkg="rosgame_players" exec="war_player" name="war_player_2"/>
+  
+</launch>
