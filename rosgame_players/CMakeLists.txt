@@ -69,7 +69,28 @@ ament_target_dependencies(war_player
                           std_msgs
                           geometry_msgs
                           sensor_msgs)        
+
                           
+
+# INSTANCIA Nº3 DEL JUGADOR
+add_executable(elusive_player src/elusive_player.cpp src/main_players.cpp)
+
+# Link the player executables with JSONCPP
+target_link_libraries(elusive_player jsoncpp)  
+
+install(TARGETS
+   elusive_player
+   DESTINATION lib/${PROJECT_NAME})
+   
+ament_target_dependencies(elusive_player
+                          rosgame_bridge
+                          rosgame_msgs
+                          rclcpp
+                          std_msgs
+                          geometry_msgs
+                          sensor_msgs)        
+                          
+
 install(DIRECTORY
         launch
         DESTINATION share/${PROJECT_NAME}
