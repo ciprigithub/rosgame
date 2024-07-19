@@ -18,4 +18,7 @@ It is composed of four folders, containing:
 
 # Credits
 University of Málaga
-MAPIR - Research Group
+MAPIR Research Group - Machine Perception and Intelligent Robotics
+
+# To Do List
+
