@@ -21,4 +21,4 @@ University of Málaga
 MAPIR Research Group - Machine Perception and Intelligent Robotics
 
 # To Do List
-
+- Remove Robot from Scene upon node kill (CoppeliSim)
