@@ -39,6 +39,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
 include_directories(include)
 
+install(DIRECTORY
+        launch
+        DESTINATION share/${PROJECT_NAME}
+        )
+        
 # Define the "bridge" executable
 add_executable(bridge src/bridge.cpp src/main_bridge.cpp)
 
