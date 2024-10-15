@@ -34,6 +34,22 @@ find_package(rosgame_bridge REQUIRED)
 find_package(jsoncpp REQUIRED)
 include_directories(${jsoncpp_INCLUDE_DIRS})
 
+# INSTANCIA Nº0 (WARRIOR) 
+add_executable(warrior_player src/warrior.cpp src/main_warrior.cpp)
+target_link_libraries(warrior_player jsoncpp)  
+
+install(TARGETS
+   warrior_player
+   DESTINATION lib/${PROJECT_NAME})
+   
+ament_target_dependencies(warrior_player
+                          rosgame_bridge
+                          rosgame_msgs
+                          rclcpp
+                          std_msgs
+                          geometry_msgs
+                          sensor_msgs)
+
 # INSTANCIA Nº1 DEL JUGADOR
 add_executable(pacific_player src/pacific_player.cpp src/main_players.cpp)
 

@@ -1,3 +1,0 @@
-<launch>
-  <node pkg="rosgame_bridge" exec="bridge" name="rosgame_bridge"/>  
-</launch>

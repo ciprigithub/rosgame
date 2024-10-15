@@ -1,41 +1,76 @@
-#include "player_definition.hpp"
+//--------------------------------------------------------------------//
+//University of Málaga
+//MAPIR Research Group - Machine Perception and Intelligent Robotics
+//--------------------------------------------------------------------//
 
-Player::Player(): Node ("elusive_player")
+#include "warrior.hpp"
+
+Warrior::Warrior(): Node ("robot_warrior")
 {
-    // ...
+    warrior_nick = "UsuarioRosgame";
+    int cont = 0;
+
+    // Se crea un cliente de servicio y una solicitud para lanzar el servicio.
+    auto client = create_client<rosgame_bridge::srv::RosgameRegister>("register_service");
+    
+    auto request = std::make_shared<rosgame_bridge::srv::RosgameRegister::Request>();
+    request -> username = warrior_nick;
+    
+    // Se espera a que el servicio esté disponible.
+    bool service_available = false;
+    while(!service_available && rclcpp::ok())
+    {
+        if (client->wait_for_service(std::chrono::seconds(5)))
+        {   service_available = true;   }
+        else
+        {   RCLCPP_INFO(this->get_logger(), "Service not available. Retrying...");  }
+    }
+    
+    // Se llama al servicio hasta que la respuesta sea diferente a "-1". Este valor indica que ya existe un jugador registrado con el nombre de usuario proporcionado.
+    while (code == "-1" && rclcpp::ok())
+    {   
+        auto future = client->async_send_request(request);
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), future) == rclcpp::FutureReturnCode::SUCCESS)
+        {
+            auto response = future.get();
+            code = response->code;
+
+            if (code == "-1")
+            {
+                RCLCPP_WARN(this->get_logger(), "Username already exists. Calling the service again...");
+                warrior_nick= warrior_nick + std::to_string(cont);
+                request -> username = warrior_nick;
+                cont = cont + 1;
+            }
+            else
+            {   
+                // Se definen los publicadores y suscriptores necesarios.
+                pub1_ = create_publisher<rosgame_msgs::msg::RosgameTwist>( "/" + code + "/cmd_vel", 10 );
+                pub2_ = create_publisher<rosgame_msgs::msg::RosgamePoint>( "/" + code + "/goal_x_y", 10 );
+                sub1_ = create_subscription<sensor_msgs::msg::LaserScan>( "/" + code + "/laser_scan", 10, std::bind(&Warrior::process_laser_info, this, std::placeholders::_1));
+                sub2_ = create_subscription<std_msgs::msg::String>( "/" + code + "/scene_info", 10, std::bind(&Warrior::process_scene_info, this, std::placeholders::_1));
+                RCLCPP_INFO(this->get_logger(), "Player registered. Starting simulation.");           
+            }
+        }
+    }
+
+
+
+
+}
+
+Warrior::~Warrior()
+{
+     RCLCPP_ERROR(this->get_logger(), "Game over for [%s]", warrior_nick.c_str());
+}
+
+void Warrior::process_laser_info(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+{
+    //Aquí tu código cada vez que recibas información del láser
 }
 
 
-void Player::process_laser_info(const sensor_msgs::msg::LaserScan::SharedPtr msg)
-{
-    // Se busca la distancia mínima, que representa el objeto más cercano.
-    std::vector<float>::iterator min_it = std::min_element(msg->ranges.begin()+25, msg->ranges.end()-25);
-
-    double nearest_obstacle_distance = *min_it;
-    long unsigned int pos_in_array = std::distance(msg->ranges.begin(), min_it);
-
-    float linear,angular;
-    angular=0;
-    linear=1;
-    if(pos_in_array<=(msg->ranges.size()/2)-25)
-    {
-        //Obstáculo ubicado en la zona derecha
-        angular=0.5;
-    }
-    if(pos_in_array>=(msg->ranges.size()/2)+25)
-    {
-        //Obstáculo ubicado en la zona izq
-        angular=-0.5;
-    }
-    if (nearest_obstacle_distance<0.5)
-    {
-        linear=-0.5;
-    }
-    publish_vel(linear,angular);
-}
-
-
-void Player::process_scene_info(const std_msgs::msg::String::SharedPtr msg)
+void Warrior::process_scene_info(const std_msgs::msg::String::SharedPtr msg)
 {
     // Se convierte el msg de tipo string con formato en un JSON.
     Json::CharReaderBuilder reader;
@@ -118,22 +153,3 @@ void Player::process_scene_info(const std_msgs::msg::String::SharedPtr msg)
 }
 
 
-std::tuple<double, double, double, double> Player::autonomous_navigation(double nearest_obstacle_distance)
-{
-    //This player does not implement autonomous navigation features
-    std::tuple<double,double,double,double> res;
-    RCLCPP_INFO(this->get_logger(), "Not implemented autonomous navigation. Nearest obstacle [%f]\n:",nearest_obstacle_distance);
-    return res;
-}
-
-
-void Player::publish_vel(double linear, double angular)
-{
-    rosgame_msgs::msg::RosgameTwist cmd_vel;
-
-    cmd_vel.vel.linear.x = linear;
-    cmd_vel.vel.angular.z = angular;
-    cmd_vel.code = code;
-
-    pub1_->publish(cmd_vel);
-}
