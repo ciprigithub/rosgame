@@ -8,6 +8,7 @@
 #include "rosgame_msgs/msg/rosgame_point.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "rosgame_bridge/srv/rosgame_register.hpp"
+#include <chrono>
 
 class Bridge : public rclcpp::Node
 {
@@ -51,6 +52,7 @@ private:
         std::string coppelia_laser_topic;
         std::string coppelia_scene_topic;
         possible_skills skills;
+        bool isbanned;
         
         // Manejadores para pub/sub comandos de velocidad.
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub1_;
@@ -71,4 +73,8 @@ private:
 
     // La información de los jugadores se guardará en un mapa.
     std::unordered_map<std::string, Player> RosgamePlayers;
+
+    //Timer to check the "security" of the system
+    rclcpp::TimerBase::SharedPtr timer;
+    void timer_callback();
 };

@@ -1,8 +1,10 @@
+
 #include "bridge.hpp"
 
 using std::placeholders::_1;
 using std::placeholders::_2;
 using std::placeholders::_3;
+using namespace std::literals::chrono_literals;
 
 Bridge::Bridge(): Node ("bridge")
 {
@@ -11,7 +13,61 @@ Bridge::Bridge(): Node ("bridge")
                        ("register_service", std::bind(&Bridge::handle_register_service, this, _1, _2, _3));
 
     pub_ = this->create_publisher<std_msgs::msg::Int32>("/create_robot", 10);
+
+
+    timer = this->create_wall_timer(5s, 
+        std::bind(&Bridge::timer_callback, this));
 }
+
+
+
+ void Bridge::timer_callback()
+{
+    //If any player is publishing in any /controlRobot topic, it is banned
+    for (unsigned int n=1;n<RosgamePlayers.size()+1;n++)    
+        {
+            for (auto &player : RosgamePlayers)
+            {
+                if (!player.second.isbanned)
+                {
+                   std::string topic_name1="/controlRobot" + std::to_string(n) + "/cmd_vel";
+                   std::string topic_name2="/controlRobot" + std::to_string(n) + "/goal_x_y";
+                
+                   RCLCPP_INFO_STREAM(this->get_logger(),"Checking user [" << player.second.username << "] Inspecting "<< topic_name1);
+                   RCLCPP_INFO_STREAM(this->get_logger(),"Checking user [" << player.second.username << "] Inspecting "<< topic_name2);
+                   
+                   auto result1 = this->get_publishers_info_by_topic(topic_name1);
+                   auto result2 = this->get_publishers_info_by_topic(topic_name2);
+
+                   for(const auto& node : result1)
+                     {
+                        //RCLCPP_INFO_STREAM(this->get_logger(),node.node_name() << " is publisher of topic name: " << topic_name << std::endl);
+                        if (node.node_name()!="game_manager")
+                        {
+                            RCLCPP_ERROR_STREAM(this->get_logger(),player.second.username << " is cheatting us!!! ");
+                            RCLCPP_ERROR_STREAM(this->get_logger(),player.second.username << " is BANNED. ");
+                            player.second.isbanned=true;
+                    
+                        }
+                    
+                    }
+                        for(const auto& node : result2)
+                        {
+                            //RCLCPP_INFO_STREAM(this->get_logger(),node.node_name() << " is publisher of topic name: " << topic_name << std::endl);
+                            if (node.node_name()!="game_manager")
+                            {
+                                RCLCPP_ERROR_STREAM(this->get_logger(),player.second.username << " is cheatting us!!! ");
+                                RCLCPP_ERROR_STREAM(this->get_logger(),player.second.username << " is BANNED. ");
+                                player.second.isbanned=true;
+                        }
+                    
+                }
+            }
+            }
+    }
+}
+    
+
 
 
 std::string Bridge::generate_code (int length)
@@ -41,6 +97,7 @@ void Bridge::handle_register_service(const std::shared_ptr<rmw_request_id_t> req
     std::shared_ptr<rosgame_bridge::srv::RosgameRegister::Response> response)
 { 
     // Comprueba si el usuario se ha registrado previamente.
+    RCLCPP_INFO_STREAM(this->get_logger(),"Register petition from "<< request_header->writer_guid);
     for (const auto &player : RosgamePlayers)
     {
         if (player.second.username == request->username)
@@ -72,6 +129,7 @@ void Bridge::handle_register_service(const std::shared_ptr<rmw_request_id_t> req
     
     // Guarda la información de los jugadores en el mapa "RosgamePlayers", definiendo publicadores y suscriptores necesarios.
     new_player.username = request->username;
+    new_player.isbanned = false;
     new_player.coppelia_laser_topic = coppelia_laser_topic;
     new_player.coppelia_scene_topic = coppelia_scene_topic;
     new_player.skills = {false, false, false};
@@ -93,11 +151,11 @@ void Bridge::handle_register_service(const std::shared_ptr<rmw_request_id_t> req
 
     // DEBUGGING.
     RCLCPP_INFO(this->get_logger(), "Username = '%s'", new_player.username.c_str());
-    RCLCPP_INFO(this->get_logger(), "CoppeliaSim 'cmd_vel' topic = '%s'", coppelia_cmdvel_topic.c_str());
+  //  RCLCPP_INFO(this->get_logger(), "CoppeliaSim 'cmd_vel' topic = '%s'", coppelia_cmdvel_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Player 'cmd_vel' topic = '%s'", player_cmdvel_topic.c_str());
-    RCLCPP_INFO(this->get_logger(), "CoppeliaSim laser topic = '%s'", coppelia_laser_topic.c_str());
+  //  RCLCPP_INFO(this->get_logger(), "CoppeliaSim laser topic = '%s'", coppelia_laser_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Player laser topic = '%s'", player_laser_topic.c_str());
-    RCLCPP_INFO(this->get_logger(), "CoppeliaSim scene info = '%s'", coppelia_scene_topic.c_str());
+  //  RCLCPP_INFO(this->get_logger(), "CoppeliaSim scene info = '%s'", coppelia_scene_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Player scene info = '%s'", player_scene_topic.c_str());
 }
 
@@ -113,7 +171,9 @@ void Bridge::cmdvel_info_exchange(const rosgame_msgs::msg::RosgameTwist::SharedP
     // En el mapa "RosgamePlayers" se busca al jugador cuyo código coincide con el del mensaje, empleando el método find().
     auto pointer = RosgamePlayers.find(msg->code);
     // Con el iterador que devuelve, accedemos al campo "pub1_" para reenviar el topic al robot de la escena.
-    pointer->second.pub1_->publish(velocity);
+    
+    if (!pointer->second.isbanned)
+        pointer->second.pub1_->publish(velocity);
 }
 
 
@@ -128,7 +188,8 @@ void Bridge::goalxy_info_exchange(const rosgame_msgs::msg::RosgamePoint::SharedP
     // En el mapa "RosgamePlayers" se busca al jugador cuyo código coincide con el del mensaje, empleando el método find().
     auto pointer = RosgamePlayers.find(msg->code);
     // Con el iterador que devuelve, accedemos al campo "pub4_" para reenviar el topic al robot de la escena.
-    pointer->second.pub4_->publish(position);
+    if (!pointer->second.isbanned)
+        pointer->second.pub4_->publish(position);
 }
 
 
@@ -147,7 +208,7 @@ void Bridge::laser_info_exchange(const sensor_msgs::msg::LaserScan::SharedPtr ms
     // En el mapa "RosgamePlayers" se busca el jugador cuyo campo "coppelia_laser_topic" coindice con el "frame_id" del msg.
     for (auto &player : RosgamePlayers)
     {
-        if (player.second.coppelia_laser_topic == msg->header.frame_id)
+        if (player.second.coppelia_laser_topic == msg->header.frame_id && !player.second.isbanned)
         {
             // Con el iterador que devuelve, accedemos al campo "pub2_" para reenviar el topic al nodo del jugador.
             player.second.pub2_->publish(laser_scan);
@@ -194,7 +255,7 @@ void Bridge::scene_info_exchange(const std_msgs::msg::String::SharedPtr msg)
     // En el mapa "RosgamePlayers" se buca al jugador cuyo campo "coppelia_scene_info" coincide con el nombre del topic.
     for (auto &player : RosgamePlayers)
     {
-        if (player.second.coppelia_scene_topic == topic_name)
+        if (player.second.coppelia_scene_topic == topic_name && !player.second.isbanned)
         {
             // Con el iterador que devuelve, accedemos al campo "pub3_" para reenviar el topic al nodo del jugador.
             player.second.pub3_->publish(scene_info_msg);

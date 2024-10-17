@@ -8,7 +8,7 @@ int main ( int argc, char * argv[] )
     auto node=std::make_shared<Bridge>();
 
     rclcpp::Rate rate(1);
-    RCLCPP_INFO(node->get_logger(), "Bridge node started. Waiting for Players");
+    RCLCPP_INFO(node->get_logger(), "Bridge node started. Waiting for brave warriors");
     while(rclcpp::ok())
     {
         rclcpp::spin_some(node);
