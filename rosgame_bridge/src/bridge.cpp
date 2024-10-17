@@ -97,7 +97,8 @@ void Bridge::handle_register_service(const std::shared_ptr<rmw_request_id_t> req
     std::shared_ptr<rosgame_bridge::srv::RosgameRegister::Response> response)
 { 
     // Comprueba si el usuario se ha registrado previamente.
-    RCLCPP_INFO_STREAM(this->get_logger(),"Register petition from "<< request_header->writer_guid);
+    RCLCPP_INFO_STREAM(this->get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(this->get_logger(),"Received a register petition ["<< request_header->sequence_number << "]");
     for (const auto &player : RosgamePlayers)
     {
         if (player.second.username == request->username)
@@ -157,6 +158,8 @@ void Bridge::handle_register_service(const std::shared_ptr<rmw_request_id_t> req
     RCLCPP_INFO(this->get_logger(), "Player laser topic = '%s'", player_laser_topic.c_str());
   //  RCLCPP_INFO(this->get_logger(), "CoppeliaSim scene info = '%s'", coppelia_scene_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Player scene info = '%s'", player_scene_topic.c_str());
+
+    RCLCPP_INFO_STREAM(this->get_logger(),"----------------------------------------------------------------------------------");
 }
 
 
