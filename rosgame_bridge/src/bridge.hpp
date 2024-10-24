@@ -34,7 +34,7 @@ private:
     );
 
     // Se define un publicador que se usará en CoppeliaSim para generar los robots de los jugadores.
-    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr pub_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_;
     
     // Función para generar un código alfanumérico aleatorio.
     std::string generate_code(int length);

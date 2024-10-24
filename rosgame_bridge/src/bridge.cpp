@@ -12,11 +12,14 @@ Bridge::Bridge(): Node ("bridge")
     server_register_ = this->create_service<rosgame_bridge::srv::RosgameRegister>
                        ("register_service", std::bind(&Bridge::handle_register_service, this, _1, _2, _3));
 
-    pub_ = this->create_publisher<std_msgs::msg::Int32>("/create_robot", 10);
+    pub_ = this->create_publisher<std_msgs::msg::String>("/create_robot", 10);
 
 
-    timer = this->create_wall_timer(5s, 
+    timer = this->create_wall_timer(20s, 
         std::bind(&Bridge::timer_callback, this));
+
+    // Se utiliza la hora actual como semilla para la función rand().
+    srand(time(0));
 }
 
 
@@ -33,16 +36,17 @@ Bridge::Bridge(): Node ("bridge")
                    std::string topic_name1="/controlRobot" + std::to_string(n) + "/cmd_vel";
                    std::string topic_name2="/controlRobot" + std::to_string(n) + "/goal_x_y";
                 
-                   RCLCPP_INFO_STREAM(this->get_logger(),"Checking user [" << player.second.username << "] Inspecting "<< topic_name1);
-                   RCLCPP_INFO_STREAM(this->get_logger(),"Checking user [" << player.second.username << "] Inspecting "<< topic_name2);
+                   //RCLCPP_INFO_STREAM(this->get_logger(),"Checking user [" << player.second.username << "] Inspecting "<< topic_name1);
+                   //RCLCPP_INFO_STREAM(this->get_logger(),"Checking user [" << player.second.username << "] Inspecting "<< topic_name2);
                    
                    auto result1 = this->get_publishers_info_by_topic(topic_name1);
                    auto result2 = this->get_publishers_info_by_topic(topic_name2);
 
                    for(const auto& node : result1)
                      {
+                        
                         //RCLCPP_INFO_STREAM(this->get_logger(),node.node_name() << " is publisher of topic name: " << topic_name << std::endl);
-                        if (node.node_name()!="game_manager")
+                        if (node.node_name()!=this->get_name())
                         {
                             RCLCPP_ERROR_STREAM(this->get_logger(),player.second.username << " is cheatting us!!! ");
                             RCLCPP_ERROR_STREAM(this->get_logger(),player.second.username << " is BANNED. ");
@@ -54,7 +58,7 @@ Bridge::Bridge(): Node ("bridge")
                         for(const auto& node : result2)
                         {
                             //RCLCPP_INFO_STREAM(this->get_logger(),node.node_name() << " is publisher of topic name: " << topic_name << std::endl);
-                            if (node.node_name()!="game_manager")
+                            if (node.node_name()!=this->get_name())
                             {
                                 RCLCPP_ERROR_STREAM(this->get_logger(),player.second.username << " is cheatting us!!! ");
                                 RCLCPP_ERROR_STREAM(this->get_logger(),player.second.username << " is BANNED. ");
@@ -79,15 +83,15 @@ std::string Bridge::generate_code (int length)
     
     std::string code = "";
 
-    // Se utiliza la hora actual como semilla para la función rand().
-    srand(time(NULL));
 
     // El primer caracter de un topic NO puede ser un número.
     code = code + alfanum[(rand() % (sizeof(alfanum) - 11)) + 10];
 
     for (int i = 1; i < length; i++)
     {   code = code + alfanum[rand() % (sizeof(alfanum) - 1)];  }
-       
+    
+
+
     return code;
 }
 
@@ -104,7 +108,7 @@ void Bridge::handle_register_service(const std::shared_ptr<rmw_request_id_t> req
         if (player.second.username == request->username)
         {
             response->code = "-1";
-            RCLCPP_WARN(this->get_logger(), "Username already registered.");
+            RCLCPP_WARN_STREAM(this->get_logger(), "Username already registered.");
             return;
         }
     }
@@ -146,8 +150,8 @@ void Bridge::handle_register_service(const std::shared_ptr<rmw_request_id_t> req
     RosgamePlayers[code] = new_player;
 
     // Crea un nuevo robot en la escena de CoppeliaSim.
-    std_msgs::msg::Int32 new_robot;
-    new_robot.data = n_robot;
+    std_msgs::msg::String new_robot;
+    new_robot.data = request->username;
     pub_ -> publish(new_robot);
 
     // DEBUGGING.
