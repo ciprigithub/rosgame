@@ -23,6 +23,7 @@ public:
     
     // Función para procesar la información de la escena.
     void process_scene_info(const std_msgs::msg::String::SharedPtr msg);
+    void process_keyboard(const geometry_msgs::msg::Twist::SharedPtr msg);
     
     //puedes añadir mas funciones si lo crees oportuno
 
@@ -42,6 +43,8 @@ public:
     // Subscripción al topic con la información de la escena.
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr sub2_;
 
+    // Subscripción al topic del keyboard_control
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub3_;
     void publish_twist();
 
 
@@ -53,7 +56,7 @@ private:
     
     //Id code for our robot. 
     std::string code = "-1";
-    std::string warrior_nick ="";
+    std::string warrior_nick = "";
     
     // Información de la escena.
     std::vector<std::vector<float>> skills_pos_array;
@@ -64,6 +67,6 @@ private:
     // cualquier otra variable que puedas necesitar
     bool turning;
     int turn_count;
-    rosgame_msgs::msg::RosgameTwist robot_speeds;
-    
+    rosgame_msgs::msg::RosgameTwist current_robot_speeds;
+    rosgame_msgs::msg::RosgameTwist desired_robot_speeds;    
 };

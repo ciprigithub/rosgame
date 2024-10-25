@@ -38,17 +38,18 @@ Warrior::Warrior(): Node ("robot_warrior")
             if (code == "-1")
             {
                 RCLCPP_WARN(this->get_logger(), "Username already exists. Calling the service again...");
-                warrior_nick= warrior_nick + std::to_string(cont);
+                warrior_nick = warrior_nick + std::to_string(cont);
                 request -> username = warrior_nick;
                 cont = cont + 1;
             }
             else
             {   
                 // Se definen los publicadores y suscriptores necesarios.
-                pub1_ = create_publisher<rosgame_msgs::msg::RosgameTwist>( "/" + code + "/cmd_vel", 10 );
-                pub2_ = create_publisher<rosgame_msgs::msg::RosgamePoint>( "/" + code + "/goal_x_y", 10 );
-                sub1_ = create_subscription<sensor_msgs::msg::LaserScan>( "/" + code + "/laser_scan", 10, std::bind(&Warrior::process_laser_info, this, std::placeholders::_1));
-                sub2_ = create_subscription<std_msgs::msg::String>( "/" + code + "/scene_info", 10, std::bind(&Warrior::process_scene_info, this, std::placeholders::_1));
+                pub1_ = create_publisher<rosgame_msgs::msg::RosgameTwist>( "/" + code + "/cmd_vel", 1 );
+                pub2_ = create_publisher<rosgame_msgs::msg::RosgamePoint>( "/" + code + "/goal_x_y", 1 );
+                sub1_ = create_subscription<sensor_msgs::msg::LaserScan>( "/" + code + "/laser_scan", 1, std::bind(&Warrior::process_laser_info, this, std::placeholders::_1));
+                sub2_ = create_subscription<std_msgs::msg::String>( "/" + code + "/scene_info", 1, std::bind(&Warrior::process_scene_info, this, std::placeholders::_1));
+                sub3_ = create_subscription<geometry_msgs::msg::Twist>( "/cmd_vel", 1, std::bind(&Warrior::process_keyboard, this, std::placeholders::_1));
                 RCLCPP_INFO(this->get_logger(), "Player registered. Starting simulation.");           
             }
         }
@@ -57,6 +58,12 @@ Warrior::Warrior(): Node ("robot_warrior")
     // Monroy Vars
     turning = false;
     turn_count = 0;
+    current_robot_speeds.vel.linear.x = 0.0;
+    current_robot_speeds.vel.angular.z = 0.0;
+    current_robot_speeds.code = code;
+
+    desired_robot_speeds.vel.linear.x = 0.0;
+    desired_robot_speeds.vel.angular.z = 0.0;
 }
 
 Warrior::~Warrior()
@@ -64,59 +71,68 @@ Warrior::~Warrior()
      RCLCPP_ERROR(this->get_logger(), "Game over for [%s]", warrior_nick.c_str());
 }
 
-void Warrior::process_laser_info(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+
+void Warrior::process_keyboard(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
-    if (!turning)
-    {
-        float vel_lin = 1.0;
-        float vel_ang = M_PI/4;
+    // update desired robot speeds
+    desired_robot_speeds.vel.linear.x = msg->linear.x;
+    desired_robot_speeds.vel.angular.z = msg->angular.z;
+}
 
-        // number of elements in array
-        int n_ranges = msg->ranges.size();
 
-        // search the minimum distance (closest object)
-        std::vector<float>::iterator min_it = std::min_element(msg->ranges.begin(), msg->ranges.end());
+void Warrior::process_laser_info(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+{    
+    // if (!turning)
+    // {
+    //     float vel_lin = 0.8;
+    //     float vel_ang = M_PI/4;
 
-        // get distance and position in array
-        double nearest_obstacle_distance = *min_it;
-        int pos_in_array = std::distance(msg->ranges.begin(), min_it);
+    //     // number of elements in array
+    //     int n_ranges = msg->ranges.size();
 
-        // inform
-        //RCLCPP_INFO(this->get_logger(), "Nearest obstacle detected at %.2f[m] at vector position %i/%i", nearest_obstacle_distance, pos_in_array, n_ranges);
+    //     // search the minimum distance (closest object)
+    //     std::vector<float>::iterator min_it = std::min_element(msg->ranges.begin(), msg->ranges.end());
 
-        // Check ranges
-        if (nearest_obstacle_distance <= 0.4){
-            // Danger!
-            turning = true;
-            if (pos_in_array <= floor(n_ranges/2)){
-                //object on the right -> turn left
-                robot_speeds.vel.linear.x = 0.0;
-                robot_speeds.vel.angular.z = vel_ang;
-                RCLCPP_INFO(this->get_logger(), "Turning Left");
-            }else{
-                //object on the left -> turn right
-                robot_speeds.vel.linear.x = 0.0;
-                robot_speeds.vel.angular.z = -vel_ang;
-                RCLCPP_INFO(this->get_logger(), "Turning Right");
-            }
-        }else{
-            // Free path ahead
-            robot_speeds.vel.linear.x = vel_lin;
-            robot_speeds.vel.angular.z = 0.0;
-            //RCLCPP_INFO(this->get_logger(), "Going Straight!");
-        }
-    }
+    //     // get distance and position in array
+    //     double nearest_obstacle_distance = *min_it;
+    //     int pos_in_array = std::distance(msg->ranges.begin(), min_it);
+
+    //     // inform
+    //     //RCLCPP_INFO(this->get_logger(), "Nearest obstacle detected at %.2f[m] at vector position %i/%i", nearest_obstacle_distance, pos_in_array, n_ranges);
+
+    //     // Check ranges
+    //     if (nearest_obstacle_distance <= 1){
+    //         // Danger!
+    //         turning = true;
+    //         if (pos_in_array <= floor(n_ranges/2)){
+    //             //object on the right -> turn left
+    //             desired_robot_speeds.vel.linear.x = 0.0;
+    //             desired_robot_speeds.vel.angular.z = vel_ang;
+    //             RCLCPP_INFO(this->get_logger(), "Turning Left");
+    //         }else{
+    //             //object on the left -> turn right
+    //             desired_robot_speeds.vel.linear.x = 0.0;
+    //             desired_robot_speeds.vel.angular.z = -vel_ang;
+    //             RCLCPP_INFO(this->get_logger(), "Turning Right");
+    //         }
+    //     }else{
+    //         // Free path ahead
+    //         desired_robot_speeds.vel.linear.x = vel_lin;
+    //         desired_robot_speeds.vel.angular.z = 0.0;
+    //         //RCLCPP_INFO(this->get_logger(), "Going Straight!");
+    //     }
+    // }
 }
 
 void Warrior::publish_twist()
 {
-    //Aquí tu código cada vez que recibas información del láser
+    //Executed at 5Hz
     if (turning)
     {
-        // increase counter to turn for 3 secs
+        // increase counter to turn a bit (called at 5Hz)
         turn_count++;    
         // turn completed?
-        if (turn_count >= 55)
+        if (turn_count >= 5)
         {
             turning = false;
             turn_count = 0;
@@ -124,8 +140,32 @@ void Warrior::publish_twist()
         }
     }
 
-    // send speed command to the robot
-    pub1_->publish(robot_speeds);
+    // Linear Acceleration
+    float inc_v = 0.1;
+    if (abs(current_robot_speeds.vel.linear.x-desired_robot_speeds.vel.linear.x) > inc_v)
+    {
+        if (current_robot_speeds.vel.linear.x > desired_robot_speeds.vel.linear.x)
+            current_robot_speeds.vel.linear.x -= inc_v;
+        else
+            current_robot_speeds.vel.linear.x += inc_v;
+    }
+    else
+        current_robot_speeds.vel.linear.x = desired_robot_speeds.vel.linear.x;
+    
+    // Angular Acceleration
+    float inc_w = 0.3;
+    if (abs(current_robot_speeds.vel.angular.z-desired_robot_speeds.vel.angular.z) > inc_w)
+    {
+        if (current_robot_speeds.vel.angular.z > desired_robot_speeds.vel.angular.z)
+            current_robot_speeds.vel.angular.z -= inc_w;
+        else
+            current_robot_speeds.vel.angular.z += inc_w;
+    }
+    else
+        current_robot_speeds.vel.angular.z = desired_robot_speeds.vel.angular.z;
+    
+    // Publish
+    pub1_->publish(current_robot_speeds);
 }
 
 
@@ -191,6 +231,9 @@ void Warrior::process_scene_info(const std_msgs::msg::String::SharedPtr msg)
     players_pos_array = players_pos_array_aux;
     
     // DEBUGGING
+    RCLCPP_INFO(this->get_logger(), "Battery level: '%f'", battery);
+    RCLCPP_INFO(this->get_logger(), "Robot Pose: [X] = '%f', [Y] = '%f', [GAMMA] = '%f'", pos_x, pos_y, gamma);
+
     /*
     RCLCPP_INFO(this->get_logger(), "Msg: '%s'", msg->data.c_str());
 
