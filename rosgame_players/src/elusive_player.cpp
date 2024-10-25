@@ -20,16 +20,16 @@ void Player::process_laser_info(const sensor_msgs::msg::LaserScan::SharedPtr msg
     if(pos_in_array<=(msg->ranges.size()/2)-25)
     {
         //Obstáculo ubicado en la zona derecha
-        angular=0.5;
+        angular=1;
     }
     if(pos_in_array>=(msg->ranges.size()/2)+25)
     {
         //Obstáculo ubicado en la zona izq
-        angular=-0.5;
+        angular=-1;
     }
     if (nearest_obstacle_distance<0.5)
     {
-        linear=-0.5;
+        linear=-1;
     }
     publish_vel(linear,angular);
 }

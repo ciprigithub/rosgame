@@ -77,4 +77,5 @@ private:
     //Timer to check the "security" of the system
     rclcpp::TimerBase::SharedPtr timer;
     void timer_callback();
+    std::vector<std::string> colors;
 };

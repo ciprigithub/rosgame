@@ -20,6 +20,12 @@ Bridge::Bridge(): Node ("bridge")
 
     // Se utiliza la hora actual como semilla para la función rand().
     srand(time(0));
+    colors.push_back("RED");
+    colors.push_back("GREEN");
+    colors.push_back("BLUE");
+    colors.push_back("PURPLE");
+    colors.push_back("CYAN");
+
 }
 
 
@@ -121,6 +127,8 @@ void Bridge::handle_register_service(const std::shared_ptr<rmw_request_id_t> req
     response->code = code;
 
     int n_robot = RosgamePlayers.size() + 1;
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "Username Color id: "<< colors[n_robot-1]);
 
     // Se definen los nombres de los topics, teniendo el cuenta el índice del robot.
     std::string coppelia_cmdvel_topic = "/controlRobot" + std::to_string(n_robot) + "/cmd_vel";
