@@ -186,9 +186,13 @@ void Bridge::cmdvel_info_exchange(const rosgame_msgs::msg::RosgameTwist::SharedP
     // En el mapa "RosgamePlayers" se busca al jugador cuyo código coincide con el del mensaje, empleando el método find().
     auto pointer = RosgamePlayers.find(msg->code);
     // Con el iterador que devuelve, accedemos al campo "pub1_" para reenviar el topic al robot de la escena.
-    
-    if (!pointer->second.isbanned)
-        pointer->second.pub1_->publish(velocity);
+    //Compruebo que code es válido para un jugador.
+    //TODO.- Si se publica con un code incorrecto o sin code, banear al jugador
+    if (pointer!= RosgamePlayers.end())
+    {
+        if (!pointer->second.isbanned)
+            pointer->second.pub1_->publish(velocity);
+    }
 }
 
 
@@ -202,9 +206,14 @@ void Bridge::goalxy_info_exchange(const rosgame_msgs::msg::RosgamePoint::SharedP
 
     // En el mapa "RosgamePlayers" se busca al jugador cuyo código coincide con el del mensaje, empleando el método find().
     auto pointer = RosgamePlayers.find(msg->code);
-    // Con el iterador que devuelve, accedemos al campo "pub4_" para reenviar el topic al robot de la escena.
-    if (!pointer->second.isbanned)
-        pointer->second.pub4_->publish(position);
+    // Con el iterador que devuelve, accedemos al campo "pub4_" para reenviar el topic al robot de la escena.    
+    
+    if (pointer!= RosgamePlayers.end())
+    {
+        if (!pointer->second.isbanned)
+            pointer->second.pub4_->publish(position);
+    }
+
 }
 
 
