@@ -3,7 +3,7 @@
 // MAPIR Research Group - Machine Perception and Intelligent Robotics
 //--------------------------------------------------------------------//
 
-#include "warrior_monroy/warrior.hpp"
+#include "warrior_sample/warrior.hpp"
 #include <chrono>
 #include <thread>
 

@@ -3,11 +3,11 @@
 //MAPIR Research Group - Machine Perception and Intelligent Robotics
 //--------------------------------------------------------------------//
 
-#include "warrior_monroy/warrior.hpp"
+#include "warrior_sample/warrior.hpp"
 
 Warrior::Warrior(): Node ("robot_warrior")
 {
-    warrior_nick = "Monroy";
+    warrior_nick = "warrior_sample";
     int cont = 0;
     
     // Se crea un cliente de servicio y una solicitud para lanzar el servicio.
@@ -55,7 +55,7 @@ Warrior::Warrior(): Node ("robot_warrior")
         }
     }
 
-    // Monroy Vars
+    // Vars
     turning = false;
     turn_count = 0;
     current_robot_speeds.vel.linear.x = 0.0;

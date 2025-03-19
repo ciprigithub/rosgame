@@ -1,3 +1,0 @@
-<launch>
-  <node pkg="warrior_monroy" exec="warrior" name="warrior"/>
-</launch>
