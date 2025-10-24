@@ -1,7 +1,8 @@
-# rosgame
-A ROS2 workspace to learn and practice the ROS2 concepts while playing a "video-game".
-It is designed as part of a university course in "robotic control and programming" from University of Málaga.
-The "game" is designed within the CoppeliaSim robotic simulator (as a scene), implementing all the game dynamics as well as offering a ROS2 API to allow "players" to  intereact with one robot within the game. Therefore, all players must be implemented as ROS2 nodes (c++ or python).
+# Game-Based Learning in Mobile Robotics. Teaching ROS2 Through a Competitive Game
+
+A ROS2 workspace and CoppeliaSim scene to learn and practice the ROS2 concepts while playing a "video-game".
+It is designed as part of a undergraduate course in "robotic control and programming" from University of Málaga.
+The game baptized as "rosgame"i s designed within the CoppeliaSim robotic simulator (as a scene), implementing all the game dynamics as well as offering a ROS2 API to allow "players" to  intereact with one robot within the game. Therefore, all players must be implemented as ROS2 nodes (c++ or python).
 
 The code is organized into four pkgs:
 1. **rosgame_bridge**: Pkg that reads/exports data to/from the game (that is, coppeliaSim), allowing communication with ROS2 nodes (players). It controlls the data flow to implement some "security" like avoiding players to read data from other robots (which is considered cheating XD), or commanding a robot that is not under their control.
@@ -23,6 +24,3 @@ The code is organized into four pkgs:
 # Credits
 University of Málaga
 MAPIR Research Group - Machine Perception and Intelligent Robotics
-
-# To Do List
-- Remove Robot from Scene upon node kill (CoppeliSim)
