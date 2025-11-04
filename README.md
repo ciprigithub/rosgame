@@ -1,7 +1,9 @@
 # Game-Based Learning in Mobile Robotics. Teaching ROS2 Through a Competitive Game
 
-A ROS2 workspace and CoppeliaSim scene to learn and practice the ROS2 concepts while playing a "video-game".
+A ROS2 workspace and CoppeliaSim scenes to learn and practice the ROS2 concepts while playing different"video-games". 
+
 It is designed as part of a undergraduate course in "robotic control and programming" from University of Málaga.
+
 The game baptized as "rosgame"i s designed within the CoppeliaSim robotic simulator (as a scene), implementing all the game dynamics as well as offering a ROS2 API to allow "players" to  intereact with one robot within the game. Therefore, all players must be implemented as ROS2 nodes (c++ or python).
 
 The code is organized into four pkgs:
