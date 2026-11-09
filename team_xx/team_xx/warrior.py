@@ -37,7 +37,7 @@ class WarriorNode(Node):
     """
     def register_player(self):
         req = RosgameRegister.Request()
-        req.username = self.warrior_nick
+        req.username = self.nick
         self.code = "-1"
         self.cont = 0
 
@@ -50,8 +50,8 @@ class WarriorNode(Node):
                 self.code = res.code
                 if self.code == "-1":
                     self.get_logger().warn("Username taken. Retrying with incremented nick...")
-                    self.warrior_nick = f"Team_XX_Warrior_{self.cont}"
-                    req.username = self.warrior_nick
+                    self.nick = f"Team_XX_Warrior_{self.cont}"
+                    req.username = self.nick
                     self.cont += 1
                 else:
                     # Registration successful
@@ -70,7 +70,7 @@ class WarriorNode(Node):
         self.sub_laserscan = self.create_subscription(LaserScan, f'/{self.code}/laser_scan', self.process_laser_info, 1)
         self.sub_sceneinfo = self.create_subscription(String, f'/{self.code}/scene_info', self.process_scene_info, 1)
         
-        self.get_logger().info(f"== [CyPR] Warrior Node '{self.warrior_nick}' registered! Implement your strategy and good luck! ==")
+        self.get_logger().info(f"== [CyPR] Warrior Node '{self.nick}' registered! Implement your strategy and good luck! ==")
 
 
     def process_laser_info(self, msg: LaserScan):

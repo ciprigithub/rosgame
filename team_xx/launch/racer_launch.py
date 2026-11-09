@@ -6,7 +6,7 @@ def generate_launch_description():
         # Bridge Node (Comms with CoppeliaSim)
         Node(
             package='rosgame_bridge',
-            executable='rosgame_bridge_node',
+            executable='bridge',
             name='rosgame_bridge',
             output='screen'
         ),
