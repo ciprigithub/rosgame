@@ -55,6 +55,7 @@ class RacerNode(Node):
             else:
                 self.get_logger().error("Failed to connect to registration service.")
 
+
     """
     Initializes the necessary subscribers and publishers for the robot.
     """
@@ -68,6 +69,24 @@ class RacerNode(Node):
         
         # Log registration success
         self.get_logger().info(f"== [CyPR] Racer Node '{self.nick}' registered! Implement your strategy and good luck! ==")
+
+        # DEMO - Timer for publishing velocity commands (e.g., 10 Hz / 0.1 seconds)
+        self.cmd_timer = self.create_timer(0.1, self.send_velocity_command)
+
+
+    def send_velocity_command(self):
+        """
+        Test publisher to send movement commands to the robot.
+        """
+        msg = RosgameTwist()
+        
+        # Set linear and angular velocities (adjust values to test movement)
+        msg.code = self.code
+        msg.vel.linear.x = 0.4   # Move forward at 0.2 m/s
+        msg.vel.angular.z = 0.5  # Turn slightly at 0.1 rad/s
+        
+        # Publish the command
+        self.pub_cmdvel.publish(msg)
 
 
     def process_laser_info(self, msg: LaserScan):        
@@ -84,6 +103,8 @@ class RacerNode(Node):
 
             # Get current battery level
             self.battery = float(scene_data.get("Battery_Level", 100.0))
+            self.get_logger().info(f"[CyPR] battery = {self.battery} %")
+            
             
             # Get current number of points (+coins-collisions)
             self.points = int(scene_data.get("Points", 0))
