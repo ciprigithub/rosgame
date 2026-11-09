@@ -53,14 +53,14 @@ rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}
 )
 
 # Link the "bridge" executable with ROSIDL typesupport
-target_link_libraries(bridge "${cpp_typesupport_target}")
+#target_link_libraries(bridge "${cpp_typesupport_target}")
 
 # Find and include JSONCPP package
 find_package(jsoncpp REQUIRED)
 include_directories(${jsoncpp_INCLUDE_DIRS})
 
 # Link the "bridge" executable with JSONCPP
-target_link_libraries(bridge jsoncpp)
+#target_link_libraries(bridge jsoncpp)
 
 # Install the "bridge" executable
 install(TARGETS
@@ -68,12 +68,22 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+target_link_libraries(bridge PUBLIC
+  rclcpp::rclcpp
+  "${cpp_typesupport_target}"
+  jsoncpp
+  ${rosgame_msgs_TARGETS}
+  ${std_msgs_TARGETS}
+  ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+)
+
 # Ament target dependencies
-ament_target_dependencies(bridge
-                          rosgame_msgs
-                          rclcpp
-                          std_msgs
-                          geometry_msgs
-                          sensor_msgs)
+#ament_target_dependencies(bridge
+#                          rosgame_msgs
+#                          rclcpp
+#                          std_msgs
+#                          geometry_msgs
+#                          sensor_msgs)
 
 ament_package()
