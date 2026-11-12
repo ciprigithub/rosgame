@@ -45,7 +45,7 @@ class RacerNode(Node):
             if res is not None:
                 self.code = res.code
                 if self.code == "-1":
-                    self.get_logger().warn("Username taken. Retrying with incremented nick...")
+                    self.get_logger().warning("Username taken. Retrying with incremented nick...")
                     self.nick = f"team_xx_racer_{self.cont}"
                     req.username = self.nick
                     self.cont += 1

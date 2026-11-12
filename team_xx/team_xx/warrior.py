@@ -49,7 +49,7 @@ class WarriorNode(Node):
             if res is not None:
                 self.code = res.code
                 if self.code == "-1":
-                    self.get_logger().warn("Username taken. Retrying with incremented nick...")
+                    self.get_logger().warning("Username taken. Retrying with incremented nick...")
                     self.nick = f"Team_XX_Warrior_{self.cont}"
                     req.username = self.nick
                     self.cont += 1
@@ -95,8 +95,8 @@ class WarriorNode(Node):
             self.shield_enabled = bool(skills.get("Shield", False))
             
             fov = scene_data.get("FOV", {})
-            self.skills_pos_array = fov.get("Skills_Positions", [])
-            self.players_pos_array = fov.get("Players_Positions", [])
+            self.skill_pos_list = fov.get("Skills_Positions", [])
+            self.player_pos_list = fov.get("Players_Positions", [])
                     
         except Exception as e:
             self.get_logger().error(f"[WARRIOR] Error parsing JSON payload: {e}")
