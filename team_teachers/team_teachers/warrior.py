@@ -42,6 +42,7 @@ class WarriorNode(Node):
         self.register_player()
 
 
+    
     """
         Registers a new player within the game.
     """
@@ -69,6 +70,7 @@ class WarriorNode(Node):
             else:
                 self.get_logger().error("Failed to connect to registration service.")
 
+    
     """
         Initializes the necessary subscribers and publishers for the robot.
     """
@@ -84,7 +86,7 @@ class WarriorNode(Node):
 
         # Timers: 10 Hz navigation loop & 2 Hz debug screen output
         self.timer_control = self.create_timer(0.1, self.control_loop)
-        self.timer_debug = self.create_timer(0.5, self.print_debug_screen)
+        #self.timer_debug = self.create_timer(1, self.print_debug_screen)
 
 
     # ==================================================================
@@ -92,6 +94,7 @@ class WarriorNode(Node):
     # ==================================================================
     def process_laser_info(self, msg: LaserScan):
         """Splits the LaserScan into Right, Front, and Left sectors."""
+        
         ranges = msg.ranges
         n = len(ranges)
         if n == 0:
@@ -107,6 +110,9 @@ class WarriorNode(Node):
         self.right_min_dist = min(right_rays) if right_rays else float('inf')
         self.front_min_dist = min(front_rays) if front_rays else float('inf')
         self.left_min_dist = min(left_rays) if left_rays else float('inf')
+
+        # Display number of beams and min distances
+        #self.get_logger().info(f"== [Laser] Warrior '{self.nick}': beams={n}, min_dist=({self.left_min_dist,self.front_min_dist,self.right_min_dist})  ==")
 
 
     def process_scene_info(self, msg: String):
@@ -167,11 +173,12 @@ class WarriorNode(Node):
             for idx, enemy in enumerate(self.player_pos_list, start=1):
                 if isinstance(enemy, dict):
                     epos = enemy.get("pos", [0.0, 0.0, 0.0])
+                    ehp = enemy.get("hp", 100)
                     ehammer = enemy.get("Hammer", False)
                     eshield = enemy.get("Shield", False)
                     lines.append(
                         f"  - Enemy {idx}: pos=({epos[0]:.2f}, {epos[1]:.2f}) | "
-                        f"Hammer={ehammer} | Shield={eshield}"
+                        f"HP={ehp}/100 | Hammer={ehammer} | Shield={eshield}"
                     )
                 else:
                     lines.append(f"  - Enemy {idx}: pos=({enemy[0]:.2f}, {enemy[1]:.2f})")
@@ -197,36 +204,84 @@ class WarriorNode(Node):
                 best_pt = (pt[0], pt[1])
         return best_pt
 
+
+    def score_enemy(self, enemy: dict) -> float:
+        """
+        Computes a priority cost for an enemy (lower = better target).
+        Balances distance (time efficiency) against Shield, Hammer, and HP.
+        """
+        epos = enemy.get("pos", [0.0, 0.0, 0.0])
+        dist = math.hypot(epos[0] - self.pos_x, epos[1] - self.pos_y)
+
+        ehp = enemy.get("hp", 100)
+        eshield = enemy.get("Shield", False)
+        ehammer = enemy.get("Hammer", False)
+
+        # Effective hits/HP factor (scaled so 50 HP ~= 2.0m of travel distance)
+        hp_cost = 0.04 * ehp
+
+        # Shield halves our hammer damage (50 -> 25), making kills much slower
+        shield_cost = 3.0 if eshield else 0.0
+
+        # If we have Shield + Hammer, we can trade safely even against Hammer users;
+        # without Shield, strongly avoid enemy Hammers unless they are critical HP.
+        if self.hammer_enabled and self.shield_enabled:
+            hammer_cost = 1.5 if ehammer else 0.0
+        else:
+            hammer_cost = 6.0 if ehammer else 0.0
+
+        return dist + hp_cost + shield_cost + hammer_cost
+    
+
     def select_target(self):
         """Chooses the next (x, y) waypoint based on battery, skills, and enemies."""
-        # 1. Low/medium battery -> prioritize nearest charger
-        if self.battery < 45.0 and self.charger_pos_list:
-            return self.get_closest_point(self.charger_pos_list)
 
-        # 2. If we have Hammer -> hunt enemies that DO NOT have a Hammer (if any)
+        # God Mode!
+        juggernaut = self.hammer_enabled and self.shield_enabled
+
+        # 1. Critical battery check (ignore normal 45% threshold if in Juggernaut mode!)
+        bat_threshold = 20.0 if juggernaut else 45.0
+        if self.battery < bat_threshold and self.charger_pos_list:
+            return self.get_closest_point(self.charger_pos_list), False
+
+        # 2. FULL AGGRESSION: Hammer + Shield active -> hunt weakest/closest enemy immediately!
+        if juggernaut and self.player_pos_list:
+            enemies = [e for e in self.player_pos_list if isinstance(e, dict)]
+            if enemies:
+                best = min(enemies, key=self.score_enemy)
+                return (best["pos"][0], best["pos"][1]), True
+
+        # 3. HAMMER ACTIVE (no Shield): hunt weakest unarmed/unshielded enemy
         if self.hammer_enabled and self.player_pos_list:
-            unarmed_enemies = []
-            for enemy in self.player_pos_list:
-                if isinstance(enemy, dict):
-                    if not enemy.get("Hammer", False):
-                        unarmed_enemies.append(enemy["pos"])
-                else:
-                    unarmed_enemies.append(enemy)
+            enemies = [e for e in self.player_pos_list if isinstance(e, dict)]
+            if enemies:
+                best = min(enemies, key=self.score_enemy)
+                # Only engage a hammer-wielder without shield if they are nearly dead (<= 25 HP)
+                if not best.get("Hammer", False) or best.get("Health", 100) <= 25:
+                    return (best["pos"][0], best["pos"][1]), True
 
-            if unarmed_enemies:
-                return self.get_closest_point(unarmed_enemies)
+        # 4. OPPORTUNISTIC RAM KILL: Finish off any very weak unarmed enemy (<= 18 HP) for full heal!
+        if self.player_pos_list:
+            weak_enemies = [
+                e for e in self.player_pos_list
+                if isinstance(e, dict)
+                and not e.get("Hammer", False)
+                and e.get("Health", 100) <= 18
+            ]
+            if weak_enemies:
+                best = min(weak_enemies, key=self.score_enemy)
+                return (best["pos"][0], best["pos"][1]), True
 
-        # 3. Gather skill blocks on sight (to get Hammer / Shield)
-        # It may be empty
+        # 5. Gather Skill Blocks to gear up (Hammer / Shield)
         if self.skill_pos_list:
-            return self.get_closest_point(self.skill_pos_list)
+            return self.get_closest_point(self.skill_pos_list), False
 
-        # 4. Top up battery if below 85%
+        # 6. Top up battery if below 85%
         if self.battery < 85.0 and self.charger_pos_list:
-            return self.get_closest_point(self.charger_pos_list)
+            return self.get_closest_point(self.charger_pos_list), False
 
-        # Fallback: "wander" or move toward center of the arena
-        return (0.0, 0.0)
+        # Fallback: patrol arena center to find targets
+        return (0.0, 0.0), False
     
 
     def send_cmd_vel(self, linear_x: float, angular_z: float):
@@ -249,30 +304,32 @@ class WarriorNode(Node):
             return
 
         # Where to move? skill / battery / enemy?
-        target_x, target_y = self.select_target()
+        (target_x, target_y), combat_rush = self.select_target()
 
-        # Reactive LiDAR obstacle avoidance
-        # We have a goal, but lets avoid hitting obstacles
-        if self.front_min_dist < 0.45:
-            # Turn toward whichever side has more clearance
-            turn_dir = 1.2 if self.left_min_dist > self.right_min_dist else -1.2
-            self.send_cmd_vel(0.05, turn_dir)
-            return
-
-        # Proportional go-to-goal steering
         dx = target_x - self.pos_x
         dy = target_y - self.pos_y
         dist = math.hypot(dx, dy)
         desired_yaw = math.atan2(dy, dx)
-
-        # Normalize angular error to [-pi, pi]
         angle_err = (desired_yaw - self.gamma + math.pi) % (2.0 * math.pi) - math.pi
 
-        angular_z = max(-1.5, min(1.5, 2.0 * angle_err))
-        if abs(angle_err) < 0.6:
-            linear_x = min(0.45, 0.20 + 0.5 * dist)
+        # Tighten obstacle avoidance radius when lunging at a target (< 0.8m away)
+        # so LiDAR doesn't shy away from the enemy robot right before impact!
+        obs_threshold = 0.25 if (combat_rush and dist < 0.85) else 0.45
+
+        if self.front_min_dist < obs_threshold:
+            turn_dir = 1.5 if self.left_min_dist > self.right_min_dist else -1.5
+            self.send_cmd_vel(0.08, turn_dir)
+            return
+
+        # Aggressive steering & higher top speed during combat rush
+        kp_ang = 2.6 if combat_rush else 2.0
+        max_v = 0.65 if combat_rush else 0.45
+
+        angular_z = max(-2.0, min(2.0, kp_ang * angle_err))
+        if abs(angle_err) < 0.7:
+            linear_x = min(max_v, 0.25 + 0.6 * dist)
         else:
-            linear_x = 0.10
+            linear_x = 0.12
 
         self.send_cmd_vel(linear_x, angular_z)
 
