@@ -17,5 +17,23 @@ def generate_launch_description():
             executable='warrior',
             name='warrior',
             output='screen'
+        ),
+        Node(
+            package='team_teachers',
+            executable='warrior',
+            name='warrior2',
+            output='screen'
+        ),
+        Node(
+            package='team_teachers',
+            executable='warrior',
+            name='warrior3',
+            output='screen'
+        ),
+        Node(
+            package='team_teachers',
+            executable='warrior',
+            name='warrior4',
+            output='screen'
         )
     ])
