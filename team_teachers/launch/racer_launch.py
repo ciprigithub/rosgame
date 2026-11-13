@@ -15,13 +15,7 @@ def generate_launch_description():
         Node(
             package='team_teachers',
             executable='racer',
-            name='racer1',
-            output='screen'
-        ),
-        Node(
-            package='team_teachers',
-            executable='racer',
-            name='racer2',
+            name='team_teachers_racer',
             output='screen'
         )
     ])
