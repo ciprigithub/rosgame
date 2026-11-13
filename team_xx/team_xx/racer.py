@@ -40,7 +40,7 @@ class RacerNode(Node):
             self.get_logger().info('Register service not available, waiting...')
         
         # Register our robot
-        self.nick = f"{TEAM_ID}_racer"
+        self.nick = self.get_name()     # read the launch.name team_xx_warrior
         self.register_player()
 
 
