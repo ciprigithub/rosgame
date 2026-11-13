@@ -15,7 +15,7 @@ TEAM_ID = "team_teachers"   # Example: "team_01", "team_02", ...
 
 class WarriorNode(Node):
     def __init__(self):
-        super().__init__('warrior_teachers_node')
+        super().__init__(f"{TEAM_ID}_warrior")
         
         # Robot state vars (to complete)
         self.health = 100
@@ -43,7 +43,7 @@ class WarriorNode(Node):
             self.get_logger().info('Register service not available, waiting...')
 
         # Register our robot
-        self.nick = f"{TEAM_ID}_warrior"
+        self.nick = self.get_name()     # read the launch.name team_xx_warrior
         self.register_player()
 
 
