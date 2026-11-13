@@ -52,6 +52,7 @@ private:
         int robot_idx = 0;
         std::string username;
         possible_skills skills;
+        std::string color;
         bool isbanned = false;
 
         // cmd_vel pub/sub
@@ -72,7 +73,6 @@ private:
     // Security monitor timer
     rclcpp::TimerBase::SharedPtr timer;
     void timer_callback();
-    void ban_offender_node(const std::string &offender_node, const std::string &reason);
     bool is_system_node(const std::string &node_name);
     
     std::vector<std::string> colors;

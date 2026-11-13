@@ -20,7 +20,7 @@ Bridge::Bridge() : Node("bridge")
     timer = this->create_wall_timer(3s, std::bind(&Bridge::timer_callback, this));
 
     srand(static_cast<unsigned int>(time(nullptr)));
-    colors = {"RED", "GREEN", "BLUE", "PURPLE", "CYAN", "YELLOW", "ORANGE", "PINK"};
+    colors = {"RED", "GREEN", "BLUE", "PURPLE", "CYAN", "YELLOW", "ORANGE", "WHITE"};
 }
 
 
@@ -104,30 +104,15 @@ void Bridge::timer_callback()
                     << ") detected on private topic " << topic << "!");
             }
         }
+
+
+        // Ensure all robots registration were captured by referee
+        std_msgs::msg::String reg_event;
+        reg_event.data = "REGISTER|Robot" + idx + "|" + p.username + "|" + p.color;
+        pub_events_->publish(reg_event);
     }
 }
 
-
-void Bridge::ban_offender_node(const std::string &offender_node, const std::string &reason)
-{
-    if (offender_node == this->get_name() || offender_node == "match_referee" || offender_node == "ros2cli")
-        return;
-
-    for (auto &entry : RosgamePlayers)
-    {
-        Player &p = entry.second;
-        // Match if the ROS node name contains the team's registered username
-        if (!p.isbanned && offender_node.find(p.username) != std::string::npos)
-        {
-            RCLCPP_ERROR_STREAM(this->get_logger(),
-                "[ANTI-CHEAT] BANNED '" << p.username << "' (node: " << offender_node << ") -> " << reason);
-            p.isbanned = true;
-            return;
-        }
-    }
-    RCLCPP_WARN_STREAM(this->get_logger(),
-        "[ANTI-CHEAT] Unauthorized node '" << offender_node << "' detected -> " << reason);
-}
 
 
 std::string Bridge::generate_code(int length)
@@ -187,6 +172,7 @@ void Bridge::handle_register_service(
     Player new_player;
     new_player.robot_idx = n_robot;
     new_player.username  = request->username;
+    new_player.color = color_label;
     new_player.isbanned  = false;
     new_player.skills    = {false, false};  //shield, hammer
 
@@ -213,9 +199,9 @@ void Bridge::handle_register_service(
 
     RosgamePlayers[code] = std::move(new_player);
 
-    // Notify CoppeliaSim Robots_Generator to spawn the robot
+    // Notify CoppeliaSim Robots_Generator to spawn a new robot
     std_msgs::msg::String spawn_msg;
-    spawn_msg.data = request->username;
+    spawn_msg.data = "Robot" + std::to_string(n_robot) + "|" + request->username + "|" + color_label;
     pub_->publish(spawn_msg);
 
     // Report event (robot creation)
