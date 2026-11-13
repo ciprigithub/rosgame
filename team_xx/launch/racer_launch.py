@@ -15,7 +15,7 @@ def generate_launch_description():
         Node(
             package='team_xx',
             executable='racer',
-            name='racer',
+            name='team_xx_racer',
             output='screen'
         )
     ])
