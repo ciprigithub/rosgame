@@ -48,6 +48,7 @@ class MatchRefereeNode(Node):
     def __init__(self):
         super().__init__('match_referee')
 
+        # PARAMS
         self.declare_parameter('max_robots', 8)
         self.declare_parameter('output_dir', os.path.expanduser('~/bot_royale_results'))
         self.max_robots = self.get_parameter('max_robots').value
@@ -57,7 +58,8 @@ class MatchRefereeNode(Node):
         self.stats = {}
         self.scene_subs = []
 
-        # Single event stream from Scene_Manager & Bridge
+
+        # Listen to game events
         self.event_sub = self.create_subscription(
             String, '/game_events', self.on_game_event, 50
         )
@@ -73,10 +75,14 @@ class MatchRefereeNode(Node):
             )
             self.scene_subs.append(sub)
 
+        # TIMERS
         self.create_timer(5.0, self.print_leaderboard)
         self.get_logger().info(f"Match Referee ready! Reports will be saved in: {self.output_dir}")
 
+
+
     def ensure_player(self, alias: str) -> dict:
+        """ If not registered, creaty temporally one """
         if alias not in self.stats:
             self.stats[alias] = {
                 "robot_alias": alias,
@@ -103,6 +109,8 @@ class MatchRefereeNode(Node):
             }
         return self.stats[alias]
 
+
+
     # ------------------------------------------------------------------
     # EVENT & TELEMETRY HANDLERS
     # ------------------------------------------------------------------
@@ -111,16 +119,20 @@ class MatchRefereeNode(Node):
         if not parts:
             return
 
+        # Event types: REGISTER, SKILL, HIT, KILL, BATT
         etype = parts[0]
 
         if etype == "REGISTER" and len(parts) >= 4:
             _, alias, username, color = parts[:4]
             p = self.ensure_player(alias)
+            first_time = not p["registered"]
             p["username"] = username
             p["color"] = color
             p["registered"] = True
-            p["spawn_time"] = time.time()
-            self.get_logger().info(f"[REGISTERED] {username} -> {alias} ({color})")
+            if p["spawn_time"] is None:
+                p["spawn_time"] = time.time()
+            if first_time:
+                self.get_logger().info(f"[REGISTERED] {username} -> {alias} ({color})")
 
         elif etype == "SKILL" and len(parts) >= 3:
             _, alias, skill_name = parts[:3]
@@ -256,10 +268,12 @@ class MatchRefereeNode(Node):
         rows.append(sep)
         self.get_logger().info("\n".join(rows))
 
+
+
     def save_reports(self):
         ranked = self.get_ranked_players()
         if not ranked:
-            self.get_logger().warning("No player telemetry recorded; skipping report export.")
+            print("No player telemetry recorded; skipping report export.")
             return
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -286,8 +300,8 @@ class MatchRefereeNode(Node):
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(ranked, f, indent=2)
 
-        self.get_logger().info(f"Final CSV saved to:  {csv_path}")
-        self.get_logger().info(f"Final JSON saved to: {json_path}")
+        print(f"Final CSV saved to:  {csv_path}")
+        print(f"Final JSON saved to: {json_path}")
 
 
 def main(args=None):
