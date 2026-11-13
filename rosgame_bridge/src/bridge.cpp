@@ -14,42 +14,120 @@ Bridge::Bridge() : Node("bridge")
         "register_service", std::bind(&Bridge::handle_register_service, this, _1, _2, _3));
 
     pub_ = this->create_publisher<std_msgs::msg::String>("/create_robot", 10);
+    pub_events_ = this->create_publisher<std_msgs::msg::String>("/game_events", 10);
 
-    // Anti-cheat check every 10s
-    timer = this->create_wall_timer(10s, std::bind(&Bridge::timer_callback, this));
+    // Anti-cheat check every Xs
+    timer = this->create_wall_timer(3s, std::bind(&Bridge::timer_callback, this));
 
     srand(static_cast<unsigned int>(time(nullptr)));
     colors = {"RED", "GREEN", "BLUE", "PURPLE", "CYAN", "YELLOW", "ORANGE", "PINK"};
 }
 
 
+bool Bridge::is_system_node(const std::string &node_name)
+{
+    return node_name == this->get_name() ||
+           node_name == "referee" ||
+           node_name == "match_referee" ||
+           node_name == "ros2cli";
+}
+
+
 // Someone Cheating?
 void Bridge::timer_callback()
 {
-    // Inspect internal CoppeliaSim cmd_vel topics for unauthorized publishers
+    // 1. Protect /create_robot from unauthorized publishers
+    for (const auto &info : this->get_publishers_info_by_topic("/create_robot"))
+    {
+        if (!is_system_node(info.node_name()))
+        {
+            RCLCPP_ERROR_STREAM(this->get_logger(),
+                "[ANTI-CHEAT] Unauthorized node '" << info.node_name() << "' published to /create_robot!");
+        }
+    }
+
+    // 2. Protect internal CoppeliaSim topics (/controlRobotN/* and /RobotN/*)
     for (auto &entry : RosgamePlayers)
     {
-        Player &player = entry.second;
-        if (player.isbanned)
-            continue;
+        const std::string &code = entry.first;
+        Player &p = entry.second;
+        std::string idx = std::to_string(p.robot_idx);
 
-        std::string internal_cmd_topic = "/controlRobot" + std::to_string(player.robot_idx) + "/cmd_vel";
-        auto publishers = this->get_publishers_info_by_topic(internal_cmd_topic);
-
-        for (const auto &info : publishers)
+        // Nobody except Bridge may publish to /controlRobotN/cmd_vel
+        for (const auto &info : this->get_publishers_info_by_topic("/controlRobot" + idx + "/cmd_vel"))
         {
             if (info.node_name() != this->get_name())
             {
                 RCLCPP_ERROR_STREAM(this->get_logger(),
-                    "[ANTI-CHEAT] Node '" << info.node_name() << "' published directly to "
-                    << internal_cmd_topic << ". Banning player: " << player.username);
-                player.isbanned = true;
-                break;
+                    "[ANTI-CHEAT] Node '" << info.node_name()
+                    << "' published directly to /controlRobot" << idx << "/cmd_vel! Banning " << p.username);
+                p.isbanned = true;
+            }
+        }
+
+        // Nobody except Bridge and Referee may subscribe to /RobotN/scene_info
+        for (const auto &info : this->get_subscriptions_info_by_topic("/Robot" + idx + "/scene_info"))
+        {
+            if (!is_system_node(info.node_name()))
+                {
+                    RCLCPP_ERROR_STREAM(this->get_logger(),
+                        "[ANTI-CHEAT] Unauthorized node '" << info.node_name()
+                        << "' snooped internal topic /Robot" << idx  << "/scene_info!");
+                }
+        }        
+        
+        // Nobody except Bridge should subscribe to /<code>/cmd_vel (prevents stealing msg->code)
+        for (const auto &info : this->get_subscriptions_info_by_topic("/" + code + "/cmd_vel"))
+        {
+            if (info.node_name() != this->get_name())
+            {
+                RCLCPP_ERROR_STREAM(this->get_logger(),
+                    "[ANTI-CHEAT] Node '" << info.node_name()
+                    << "' sniffed secret code on /" << code << "/cmd_vel!");
+            }
+        }
+
+        // Only the owning team's node may subscribe to /<code>/scene_info 
+        for (const auto &topic : {"/" + code + "/scene_info"})
+        {
+            auto subs = this->get_subscriptions_info_by_topic(topic);
+            int external_subs = 0;
+            for (const auto &info : subs)
+            {
+                if (!is_system_node(info.node_name()))
+                    external_subs++;
+            }
+            if (external_subs > 1)
+            {
+                RCLCPP_ERROR_STREAM(this->get_logger(),
+                    "[ANTI-CHEAT] Multiple subscribers (" << external_subs
+                    << ") detected on private topic " << topic << "!");
             }
         }
     }
 }
 
+
+void Bridge::ban_offender_node(const std::string &offender_node, const std::string &reason)
+{
+    if (offender_node == this->get_name() || offender_node == "match_referee" || offender_node == "ros2cli")
+        return;
+
+    for (auto &entry : RosgamePlayers)
+    {
+        Player &p = entry.second;
+        // Match if the ROS node name contains the team's registered username
+        if (!p.isbanned && offender_node.find(p.username) != std::string::npos)
+        {
+            RCLCPP_ERROR_STREAM(this->get_logger(),
+                "[ANTI-CHEAT] BANNED '" << p.username << "' (node: " << offender_node << ") -> " << reason);
+            p.isbanned = true;
+            return;
+        }
+    }
+    RCLCPP_WARN_STREAM(this->get_logger(),
+        "[ANTI-CHEAT] Unauthorized node '" << offender_node << "' detected -> " << reason);
+}
 
 
 std::string Bridge::generate_code(int length)
@@ -139,6 +217,12 @@ void Bridge::handle_register_service(
     std_msgs::msg::String spawn_msg;
     spawn_msg.data = request->username;
     pub_->publish(spawn_msg);
+
+    // Report event (robot creation)
+    std_msgs::msg::String reg_event;
+    reg_event.data = "REGISTER|Robot" + std::to_string(n_robot) + "|" + request->username + "|" + color_label;
+    pub_events_->publish(reg_event);
+
 
     RCLCPP_INFO(this->get_logger(), "Player '%s' -> code='%s' | topics: /%s/{cmd_vel, laser_scan, scene_info}",
                 request->username.c_str(), code.c_str(), code.c_str());

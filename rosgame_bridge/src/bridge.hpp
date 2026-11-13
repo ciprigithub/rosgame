@@ -35,6 +35,9 @@ private:
     // Robot spawn trigger topic for CoppeliaSim
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_;
 
+    // event pub
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_events_;
+
     // Generates a random alphanumeric topic-safe code
     std::string generate_code(int length);
 
@@ -61,7 +64,7 @@ private:
 
         // scene_info pub/sub
         rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_scene_;
-        rclcpp::Subscription<std_msgs::msg::String>::SharedPtr sub_scene_;
+        rclcpp::Subscription<std_msgs::msg::String>::SharedPtr sub_scene_;        
     };
 
     std::unordered_map<std::string, Player> RosgamePlayers;
@@ -69,6 +72,8 @@ private:
     // Security monitor timer
     rclcpp::TimerBase::SharedPtr timer;
     void timer_callback();
-
+    void ban_offender_node(const std::string &offender_node, const std::string &reason);
+    bool is_system_node(const std::string &node_name);
+    
     std::vector<std::string> colors;
 };
