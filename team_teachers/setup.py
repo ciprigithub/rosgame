@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'racer = team_teachers.racer:main',
             'warrior = team_teachers.warrior:main',
+            'referee = team_teachers.referee:main',
         ],
     },
 )

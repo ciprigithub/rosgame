@@ -7,6 +7,11 @@ from std_msgs.msg import String
 from rosgame_msgs.msg import RosgameTwist
 from rosgame_bridge.srv import RosgameRegister
 
+# ==============================================================================
+#  TEAM CONFIGURATION (EDIT ONLY THIS LINE WITH YOUR ASSIGNED TEAM NUMBER!)
+# ==============================================================================
+TEAM_ID = "team_teachers"   # Example: "team_01", "team_02", ...
+
 
 class WarriorNode(Node):
     def __init__(self):
@@ -38,7 +43,7 @@ class WarriorNode(Node):
             self.get_logger().info('Register service not available, waiting...')
 
         # Register our robot
-        self.nick = "team_teachers_warrior"  # set your team here!
+        self.nick = f"{TEAM_ID}_warrior"
         self.register_player()
 
 
@@ -61,7 +66,7 @@ class WarriorNode(Node):
                 self.code = res.code
                 if self.code == "-1":
                     self.get_logger().warning("Username taken. Retrying with incremented nick...")
-                    self.nick = f"team_teachers_warrior_{self.cont}"
+                    self.nick = f"{TEAM_ID}_warrior_{self.cont}"
                     req.username = self.nick
                     self.cont += 1
                 else:
