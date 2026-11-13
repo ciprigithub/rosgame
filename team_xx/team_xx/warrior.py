@@ -1,41 +1,55 @@
+#!/usr/bin/env python3
+"""
+===============================================================================
+ROSGAME - Bot Royale Match Player Template (team_xx_warrior)
+Machine Perception and Intelligent Robotics (MAPIR) - University of Malaga
+===============================================================================
+"""
 import rclpy
-from rclpy.node import Node
 import json
+from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
-from rosgame_msgs.msg import RosgameTwist, RosgamePoint
+from rosgame_msgs.msg import RosgameTwist
 from rosgame_bridge.srv import RosgameRegister
+
+# ==============================================================================
+#  TEAM CONFIGURATION (EDIT ONLY THIS LINE WITH YOUR ASSIGNED TEAM NUMBER!)
+# ==============================================================================
+TEAM_ID = "team_xx"   # Example: "team_01", "team_02", ...
+
 
 class WarriorNode(Node):
     def __init__(self):
-        super().__init__('warrior_node')
+        super().__init__(f"{TEAM_ID}_warrior")
         
         # Robot state vars (to complete)
+        self.health = 100
         self.battery = 100.0
         self.pos_x = 0.0
         self.pos_y = 0.0
         self.gamma = 0.0
         self.hammer_enabled = False
         self.shield_enabled = False
-        
+
+        # Field-of-View (FOV) detections
         self.skill_pos_list = []
         self.charger_pos_list = []
         self.player_pos_list = []
 
-        # We need to call a Game Srv to register
+        # Connect to the game registration service
         self.cli = self.create_client(RosgameRegister, 'register_service')
         while not self.cli.wait_for_service(timeout_sec=2.0):
             self.get_logger().info('Register service not available, waiting...')
 
         # Register our robot
-        self.nick = "team_xx_warrior"  # set your team here!
+        self.nick = f"{TEAM_ID}_warrior"
         self.register_player()
 
 
-    """
-        Registers a new player within the game.
-    """
+    
     def register_player(self):
+        """Registers a new player within the game."""
         req = RosgameRegister.Request()
         req.username = self.nick
         self.code = "-1"
@@ -50,7 +64,7 @@ class WarriorNode(Node):
                 self.code = res.code
                 if self.code == "-1":
                     self.get_logger().warning("Username taken. Retrying with incremented nick...")
-                    self.nick = f"Team_XX_Warrior_{self.cont}"
+                    self.nick = f"{TEAM_ID}_warrior_{self.cont}"
                     req.username = self.nick
                     self.cont += 1
                 else:
@@ -59,10 +73,10 @@ class WarriorNode(Node):
             else:
                 self.get_logger().error("Failed to connect to registration service.")
 
-    """
-        Initializes the necessary subscribers and publishers for the robot.
-    """
+
+    
     def init_subscribers_and_publishers(self):
+        """ Initializes the necessary subscribers and publishers for the robot. """
         # Publishers
         self.pub_cmdvel = self.create_publisher(RosgameTwist, f'/{self.code}/cmd_vel', 1)
         
@@ -72,17 +86,21 @@ class WarriorNode(Node):
         
         self.get_logger().info(f"== [CyPR] Warrior Node '{self.nick}' registered! Implement your strategy and good luck! ==")
 
+    
 
     def process_laser_info(self, msg: LaserScan):
         # TODO: Implement LiDAR processing logic here
         pass
 
+
+
     def process_scene_info(self, msg: String):
-        # Scene info processing: Robot Pose, Battery lvl, Active Skills, FOV (chargers, powerups, enemies)
+        # Scene info processing: Robot Pose, Battery lvl, HP points, Active Skills, FOV (chargers, powerups, enemies)
         # TODO: Adapt this to your strategy and data handling needs
         try:
             scene_data = json.loads(msg.data)
-            
+
+            self.health = int(scene_data.get("Health", 100))
             self.battery = float(scene_data.get("Battery_Level", 100.0))
             
             pose = scene_data.get("Robot_Pose", {})
@@ -95,8 +113,11 @@ class WarriorNode(Node):
             self.shield_enabled = bool(skills.get("Shield", False))
             
             fov = scene_data.get("FOV", {})
+            self.charger_pos_list = fov.get("Chargers_Positions", [])
             self.skill_pos_list = fov.get("Skills_Positions", [])
             self.player_pos_list = fov.get("Players_Positions", [])
+
+            # TODO: Implement your decision-making!!
                     
         except Exception as e:
             self.get_logger().error(f"[WARRIOR] Error parsing JSON payload: {e}")
@@ -114,6 +135,7 @@ def main(args=None):
         pass
     node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

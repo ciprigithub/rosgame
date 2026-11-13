@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+"""
+===============================================================================
+ROSGAME - CRONO-BOT Player Template (team_xx_racer)
+Machine Perception and Intelligent Robotics (MAPIR) - University of Malaga
+===============================================================================
+"""
 import rclpy
 from rclpy.node import Node
 import json
@@ -6,32 +13,40 @@ from std_msgs.msg import String
 from rosgame_msgs.msg import RosgameTwist, RosgamePoint
 from rosgame_bridge.srv import RosgameRegister
 
+# ==============================================================================
+#  TEAM CONFIGURATION (EDIT ONLY THIS LINE WITH YOUR ASSIGNED TEAM NUMBER!)
+# ==============================================================================
+TEAM_ID = "team_xx"   # Example: "team_01", "team_02", ...
+
+
+
 class RacerNode(Node):
     def __init__(self):
-        super().__init__('racer_node')
+        super().__init__(f"{TEAM_ID}_racer")
                       
-        # Robot state vars (to complete)
+        # Robot state vars
         self.battery = 100.0
         self.points = 0
         self.pos_x = 0.0
         self.pos_y = 0.0
         self.gamma = 0.0
+
         self.list_coin_pos = []
         self.list_charger_pos = []
 
-        # We need to call a Game Srv to register
+        # Connect to the game registration service
         self.cli = self.create_client(RosgameRegister, 'register_service')
         while not self.cli.wait_for_service(timeout_sec=2.0):
             self.get_logger().info('Register service not available, waiting...')
         
         # Register our robot
-        self.nick = "team_xx_racer"  # set your team here!
+        self.nick = f"{TEAM_ID}_racer"
         self.register_player()
 
-    """
-    Registers a new player within the game.
-    """
+
+    
     def register_player(self):
+        """Registers a new player within the game."""
         req = RosgameRegister.Request()
         req.username = self.nick
         self.code = "-1"
@@ -46,7 +61,7 @@ class RacerNode(Node):
                 self.code = res.code
                 if self.code == "-1":
                     self.get_logger().warning("Username taken. Retrying with incremented nick...")
-                    self.nick = f"team_xx_racer_{self.cont}"
+                    self.nick = f"{TEAM_ID}_racer_{self.cont}"
                     req.username = self.nick
                     self.cont += 1
                 else:
@@ -56,10 +71,9 @@ class RacerNode(Node):
                 self.get_logger().error("Failed to connect to registration service.")
 
 
-    """
-    Initializes the necessary subscribers and publishers for the robot.
-    """
+    
     def init_subscribers_and_publishers(self):
+        """Initializes the necessary subscribers and publishers for the robot."""
         # Publishers
         self.pub_cmdvel = self.create_publisher(RosgameTwist, f'/{self.code}/cmd_vel', 1)
         
@@ -69,29 +83,14 @@ class RacerNode(Node):
         
         # Log registration success
         self.get_logger().info(f"== [CyPR] Racer Node '{self.nick}' registered! Implement your strategy and good luck! ==")
-
-        # DEMO - Timer for publishing velocity commands (e.g., 10 Hz / 0.1 seconds)
-        self.cmd_timer = self.create_timer(0.1, self.send_velocity_command)
-
-
-    def send_velocity_command(self):
-        """
-        Test publisher to send movement commands to the robot.
-        """
-        msg = RosgameTwist()
         
-        # Set linear and angular velocities (adjust values to test movement)
-        msg.code = self.code
-        msg.vel.linear.x = 0.4   # Move forward at 0.2 m/s
-        msg.vel.angular.z = 0.5  # Turn slightly at 0.1 rad/s
-        
-        # Publish the command
-        self.pub_cmdvel.publish(msg)
 
 
+    
     def process_laser_info(self, msg: LaserScan):        
         # TODO: Implement LiDAR processing logic here
         pass
+
 
 
     def process_scene_info(self, msg: String):
@@ -103,9 +102,7 @@ class RacerNode(Node):
 
             # Get current battery level
             self.battery = float(scene_data.get("Battery_Level", 100.0))
-            self.get_logger().info(f"[CyPR] battery = {self.battery} %")
-            
-            
+                                    
             # Get current number of points (+coins-collisions)
             self.points = int(scene_data.get("Points", 0))
 
@@ -120,14 +117,16 @@ class RacerNode(Node):
             
             # Charger Positions
             all_chargers = fov.get("Chargers_Positions", [])
-            # TODO: what to do with this info
+            # TODO: what to do with this info?
 
             # Coins
             all_coins = fov.get("Coins_Positions", [])
-            # TODO: what to do with this info
+            # TODO: what to do with this info?
                     
         except Exception as e:
             self.get_logger().error(f"[RACER] Error parsing JSON payload: {e}")
+
+
 
 
 # ==============================
